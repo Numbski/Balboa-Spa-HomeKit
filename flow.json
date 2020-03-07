@@ -1,0 +1,2122 @@
+[
+    {
+        "id": "ea308a0a.455a88",
+        "type": "tab",
+        "label": "Hot Tub",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "20a5d8c7.867b48",
+        "type": "debug",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 810,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "f2984bef.52adc8",
+        "type": "function",
+        "z": "ea308a0a.455a88",
+        "name": "decode status",
+        "func": "temp = msg.payload[7];\n//('Ready', 'Rest', 'Ready in Rest')[byte_array[5]]\nreadyrest = msg.payload[10] & 0x03;\ntempsetting = msg.payload[25];\n//heatingmode = msg.payload[10];\nif ((msg.payload[15] & 0x30)===0){\n    heating=0;\n} else {\n    heating=1;\n}\nif ((msg.payload[15] & 0x04)===0){\n    temprange=\"low\";\n} else {\n    temprange=\"high\";\n}\nlightmode = msg.payload[19];\npumpmode = msg.payload[16];\ncircpump = msg.payload[18];\nvar p1 = pumpmode & 3;\nvar p2 = (pumpmode >> 2) & 3;\nvar p3 = (pumpmode >> 4) & 3;\nvar p4 = (pumpmode >> 6) & 3;\nvar lockout = parseInt(global.get(\"hottub.lockout\"))\np = {temp,tempsetting,readyrest,heating,temprange,lightmode,circpump,p1,p2,p3,p4,lockout};\nglobal.set('hottub', p);\nvar newMsg = { payload: p };\nreturn newMsg;\n\n/*\nflag4 = byte_array[10]\nself.heating = '0' if (flag4 & 0x30 == 0) else '1'\nself.temp_range = 'Low' if (flag4 & 0x04 == 0) else 'High'\n*/\n\n",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 620,
+        "y": 320,
+        "wires": [
+            [
+                "20a5d8c7.867b48",
+                "add3eee1.fafdf8",
+                "1a5a40ec.33b427",
+                "fb9d8ada.aa78b8",
+                "83fb4197.5b60a",
+                "a3470219.04dba",
+                "8496c30.77191c",
+                "63ed349c.c3140c",
+                "fa9ebbdb.59ba68",
+                "fe5bff80.0b8998",
+                "3cf23b9c.85b7ac",
+                "d5695a78.418b6",
+                "3e0fa229.9deb9e",
+                "ae1580c0.7456",
+                "7c049942.5d8268",
+                "b4085a49.ee00a",
+                "c536e836.d1a21"
+            ]
+        ]
+    },
+    {
+        "id": "e1087af3.feafc8",
+        "type": "inject",
+        "z": "ea308a0a.455a88",
+        "name": "get status",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "5",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "x": 130,
+        "y": 60,
+        "wires": [
+            [
+                "faa3c0d1.7f915"
+            ]
+        ]
+    },
+    {
+        "id": "faa3c0d1.7f915",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "fake payload",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "test",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 150,
+        "y": 180,
+        "wires": [
+            [
+                "bea16a5e.7b7c68"
+            ]
+        ]
+    },
+    {
+        "id": "78e547f0.990df8",
+        "type": "tcp request",
+        "z": "ea308a0a.455a88",
+        "server": "192.168.40.44",
+        "port": "4257",
+        "out": "time",
+        "splitc": "250",
+        "name": "Tub IP",
+        "x": 550,
+        "y": 80,
+        "wires": [
+            [
+                "f2984bef.52adc8",
+                "fd3e26c1.53b828",
+                "267d5ae2.e987a6"
+            ]
+        ]
+    },
+    {
+        "id": "d8ecb1a.807145",
+        "type": "debug",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 910,
+        "y": 960,
+        "wires": []
+    },
+    {
+        "id": "8ec0a9ff.a9dd18",
+        "type": "function",
+        "z": "ea308a0a.455a88",
+        "name": "turn on light",
+        "func": "var buf = Buffer.alloc(9,\"hex\");\n\nvar message = 0x0a;\nvar foo = buf.fill(message,2,3);\nmessage = 0xbf;\nfoo = buf.fill(message,3,4);\nmessage = 0x11;\nfoo = buf.fill(message,4,5);\nmessage = 0x11;\nfoo = buf.fill(message,5,6);\nmessage = 0x00;\nfoo = buf.fill(message,6,7);\n\nvar len = foo.lenght+5;\n\nvar hexLen = Number(len).toString(16);\n\n//start message\nvar foo2 = foo.fill(\"~\",0,1);\nvar foo3 = foo2.fill(0x07,1,2);\n\npolycrc = global.get('polycrc');\nlet crc8 = polycrc.crc(8, 0x07, 0x02, 0x02, false);\nmakecrc = foo.slice(1, 7);\n\nbar = crc8(makecrc);\n\nvar foo4 = foo3.fill(bar,7,8);\n//cap message\nvar foo5 = foo4.fill(\"~\",8);\n\np = {foo5};\nvar newMsg = { payload: p };\nreturn newMsg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 510,
+        "y": 740,
+        "wires": [
+            [
+                "b864a7e6.19d478"
+            ]
+        ]
+    },
+    {
+        "id": "b864a7e6.19d478",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.foo5",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 800,
+        "y": 860,
+        "wires": [
+            [
+                "d8ecb1a.807145",
+                "6eb53a1f.e963ac"
+            ]
+        ]
+    },
+    {
+        "id": "1d1bdb70.305dbd",
+        "type": "mqtt out",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "topic": "",
+        "qos": "0",
+        "retain": "",
+        "broker": "8ed58af6.2de57",
+        "x": 1090,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "add3eee1.fafdf8",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "temp",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/temp",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.temp",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 810,
+        "y": 80,
+        "wires": [
+            [
+                "1d1bdb70.305dbd",
+                "f22fa8f4.669578"
+            ]
+        ]
+    },
+    {
+        "id": "fa9ebbdb.59ba68",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "tempsetting",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/tempsetting",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.tempsetting",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 830,
+        "y": 360,
+        "wires": [
+            [
+                "1d1bdb70.305dbd"
+            ]
+        ]
+    },
+    {
+        "id": "63ed349c.c3140c",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "heating",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/heating",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.heatingmode",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 820,
+        "y": 320,
+        "wires": [
+            [
+                "1d1bdb70.305dbd"
+            ]
+        ]
+    },
+    {
+        "id": "fe5bff80.0b8998",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "lights",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/lights",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.lightmode",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 810,
+        "y": 400,
+        "wires": [
+            [
+                "1d1bdb70.305dbd"
+            ]
+        ]
+    },
+    {
+        "id": "d5695a78.418b6",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "pump1",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/pump1",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.p1",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 820,
+        "y": 440,
+        "wires": [
+            [
+                "1d1bdb70.305dbd"
+            ]
+        ]
+    },
+    {
+        "id": "3cf23b9c.85b7ac",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "pump2",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/pump2",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.p2",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 820,
+        "y": 480,
+        "wires": [
+            [
+                "1d1bdb70.305dbd"
+            ]
+        ]
+    },
+    {
+        "id": "3e0fa229.9deb9e",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "pump3",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/pump3",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.p3",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 820,
+        "y": 520,
+        "wires": [
+            [
+                "1d1bdb70.305dbd"
+            ]
+        ]
+    },
+    {
+        "id": "ae1580c0.7456",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "pump4",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/pump4",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.p4",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 820,
+        "y": 560,
+        "wires": [
+            [
+                "1d1bdb70.305dbd"
+            ]
+        ]
+    },
+    {
+        "id": "f22fa8f4.669578",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "units",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/units",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "FAHRENHEIT",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 970,
+        "y": 80,
+        "wires": [
+            [
+                "1d1bdb70.305dbd"
+            ]
+        ]
+    },
+    {
+        "id": "b7634a9e.4baef8",
+        "type": "link in",
+        "z": "ea308a0a.455a88",
+        "name": "Send Msg to Hot Tub",
+        "links": [
+            "6eb53a1f.e963ac",
+            "804cc0b3.aefd98",
+            "174b5e94.a43181"
+        ],
+        "x": 275,
+        "y": 40,
+        "wires": [
+            [
+                "bea16a5e.7b7c68"
+            ]
+        ]
+    },
+    {
+        "id": "6eb53a1f.e963ac",
+        "type": "link out",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "links": [
+            "b7634a9e.4baef8"
+        ],
+        "x": 935,
+        "y": 860,
+        "wires": []
+    },
+    {
+        "id": "74025319.ff24cc",
+        "type": "mqtt in",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "topic": "ROOT/hottub/#",
+        "qos": "0",
+        "datatype": "auto",
+        "broker": "8ed58af6.2de57",
+        "x": 170,
+        "y": 620,
+        "wires": [
+            [
+                "b5ad2a15.69325"
+            ]
+        ]
+    },
+    {
+        "id": "b5ad2a15.69325",
+        "type": "switch",
+        "z": "ea308a0a.455a88",
+        "name": "is a setting change?",
+        "property": "topic",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "cont",
+                "v": "/set",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 180,
+        "y": 680,
+        "wires": [
+            [
+                "4849ae97.828728"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "4849ae97.828728",
+        "type": "switch",
+        "z": "ea308a0a.455a88",
+        "name": "which topic?",
+        "property": "topic",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "ROOT/hottub/lights/set",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "ROOT/hottub/pump1/set",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "ROOT/hottub/pump2/set",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "ROOT/hottub/pump3/set",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "ROOT/hottub/pump4/set",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "ROOT/hottub/tempsetting-hk/set",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "ROOT/hottub/heating/set",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "ROOT/hottub/temprange/set",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "ROOT/hottub/readyrest/set",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "ROOT/hottub/lockout/set",
+                "vt": "str"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 11,
+        "x": 190,
+        "y": 920,
+        "wires": [
+            [
+                "7beac7de.93aef"
+            ],
+            [
+                "fccddb0b.ff8898"
+            ],
+            [
+                "9c7115a6.91c1b8"
+            ],
+            [
+                "1117eec6.ac8669"
+            ],
+            [
+                "6bad1717.b50978"
+            ],
+            [],
+            [],
+            [
+                "55366055.f2df18"
+            ],
+            [
+                "a4f7e680.590d78"
+            ],
+            [
+                "d38d5094.9298f"
+            ],
+            []
+        ],
+        "outputLabels": [
+            "lights",
+            "p1",
+            "p2",
+            "p3",
+            "p4",
+            "temp",
+            "heating",
+            "temprange",
+            "readyrest",
+            "lockout",
+            "otherwise"
+        ]
+    },
+    {
+        "id": "43f368e4.ac3ef8",
+        "type": "function",
+        "z": "ea308a0a.455a88",
+        "name": "turn on p1",
+        "func": "var buf = Buffer.alloc(9,\"hex\");\n\nvar message = 0x0a;\nvar foo = buf.fill(message,2,3);\nmessage = 0xbf;\nfoo = buf.fill(message,3,4);\nmessage = 0x11;\nfoo = buf.fill(message,4,5);\nmessage = 0x4;\nfoo = buf.fill(message,5,6);\nmessage = 0x00;\nfoo = buf.fill(message,6,7);\n\nvar len = foo.lenght+5;\n\nvar hexLen = Number(len).toString(16);\n\nvar foo2 = foo.fill(\"~\",0,1);\nvar foo3 = foo2.fill(0x07,1,2);\n\n\n\npolycrc = global.get('polycrc');\nlet crc8 = polycrc.crc(8, 0x07, 0x02, 0x02, false);\nmakecrc = foo.slice(1, 7);\n//bar = foo.slice(1, 7);\nbar = crc8(makecrc);\n//var bar = crc.crc8(foo).toString(16);\nvar foo4 = foo3.fill(bar,7,8);\nvar foo5 = foo4.fill(\"~\",8);\n\np = {foo5};\nvar newMsg = { payload: p };\nreturn newMsg;\n",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 510,
+        "y": 780,
+        "wires": [
+            [
+                "b864a7e6.19d478"
+            ]
+        ]
+    },
+    {
+        "id": "212824c0.d3213c",
+        "type": "function",
+        "z": "ea308a0a.455a88",
+        "name": "turn on p2",
+        "func": "var buf = Buffer.alloc(9,\"hex\");\n\nvar message = 0x0a;\nvar foo = buf.fill(message,2,3);\nmessage = 0xbf;\nfoo = buf.fill(message,3,4);\nmessage = 0x11;\nfoo = buf.fill(message,4,5);\nmessage = 0x5;\nfoo = buf.fill(message,5,6);\nmessage = 0x00;\nfoo = buf.fill(message,6,7);\n\nvar len = foo.lenght+5;\n\nvar hexLen = Number(len).toString(16);\n\nvar foo2 = foo.fill(\"~\",0,1);\nvar foo3 = foo2.fill(0x07,1,2);\n\n\n\npolycrc = global.get('polycrc');\nlet crc8 = polycrc.crc(8, 0x07, 0x02, 0x02, false);\nmakecrc = foo.slice(1, 7);\n//bar = foo.slice(1, 7);\nbar = crc8(makecrc);\n//var bar = crc.crc8(foo).toString(16);\nvar foo4 = foo3.fill(bar,7,8);\nvar foo5 = foo4.fill(\"~\",8);\n\np = {foo5};\nvar newMsg = { payload: p };\nreturn newMsg;\n\n//START LEN 0a bf 11    0x50 00    CRC END\n//self.send_message(b'\\x0a\\xbf\\x11', bytes([item]) + b'\\x00')\n//def send_message(self, type, payload):\n//        length = 5 + len(payload)\n//        checksum = self.compute_checksum(bytes([length]), type + payload)\n//        prefix = b'\\x7e'\n//        message = prefix + bytes([length]) + type + payload + \\\n//            bytes([checksum]) + prefix\n// print(message)\n//        self.s.send(message)\n\n//b'~\\x07\\n\\xbf\\x11\\x11\\x00\\x93~'",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 510,
+        "y": 820,
+        "wires": [
+            [
+                "b864a7e6.19d478"
+            ]
+        ]
+    },
+    {
+        "id": "74068a7f.17aafc",
+        "type": "function",
+        "z": "ea308a0a.455a88",
+        "name": "turn on p3",
+        "func": "var buf = Buffer.alloc(9,\"hex\");\n\nvar message = 0x0a;\nvar foo = buf.fill(message,2,3);\nmessage = 0xbf;\nfoo = buf.fill(message,3,4);\nmessage = 0x11;\nfoo = buf.fill(message,4,5);\nmessage = 0x6;\nfoo = buf.fill(message,5,6);\nmessage = 0x00;\nfoo = buf.fill(message,6,7);\n\nvar len = foo.lenght+5;\n\nvar hexLen = Number(len).toString(16);\n\nvar foo2 = foo.fill(\"~\",0,1);\nvar foo3 = foo2.fill(0x07,1,2);\n\n\n\npolycrc = global.get('polycrc');\nlet crc8 = polycrc.crc(8, 0x07, 0x02, 0x02, false);\nmakecrc = foo.slice(1, 7);\n//bar = foo.slice(1, 7);\nbar = crc8(makecrc);\n//var bar = crc.crc8(foo).toString(16);\nvar foo4 = foo3.fill(bar,7,8);\nvar foo5 = foo4.fill(\"~\",8);\n\np = {foo5};\nvar newMsg = { payload: p };\nreturn newMsg;\n\n//START LEN 0a bf 11    0x50 00    CRC END\n//self.send_message(b'\\x0a\\xbf\\x11', bytes([item]) + b'\\x00')\n//def send_message(self, type, payload):\n//        length = 5 + len(payload)\n//        checksum = self.compute_checksum(bytes([length]), type + payload)\n//        prefix = b'\\x7e'\n//        message = prefix + bytes([length]) + type + payload + \\\n//            bytes([checksum]) + prefix\n// print(message)\n//        self.s.send(message)\n\n//b'~\\x07\\n\\xbf\\x11\\x11\\x00\\x93~'",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 510,
+        "y": 860,
+        "wires": [
+            [
+                "b864a7e6.19d478"
+            ]
+        ]
+    },
+    {
+        "id": "1f56c1fd.fd2ece",
+        "type": "function",
+        "z": "ea308a0a.455a88",
+        "name": "turn on p4",
+        "func": "var buf = Buffer.alloc(9,\"hex\");\n\nvar message = 0x0a;\nvar foo = buf.fill(message,2,3);\nmessage = 0xbf;\nfoo = buf.fill(message,3,4);\nmessage = 0x11;\nfoo = buf.fill(message,4,5);\nmessage = 0x7;\nfoo = buf.fill(message,5,6);\nmessage = 0x00;\nfoo = buf.fill(message,6,7);\n\nvar len = foo.lenght+5;\n\nvar hexLen = Number(len).toString(16);\n\nvar foo2 = foo.fill(\"~\",0,1);\nvar foo3 = foo2.fill(0x07,1,2);\n\n\n\npolycrc = global.get('polycrc');\nlet crc8 = polycrc.crc(8, 0x07, 0x02, 0x02, false);\nmakecrc = foo.slice(1, 7);\n//bar = foo.slice(1, 7);\nbar = crc8(makecrc);\n//var bar = crc.crc8(foo).toString(16);\nvar foo4 = foo3.fill(bar,7,8);\nvar foo5 = foo4.fill(\"~\",8);\n\np = {foo5};\nvar newMsg = { payload: p };\nreturn newMsg;\n\n//START LEN 0a bf 11    0x50 00    CRC END\n//self.send_message(b'\\x0a\\xbf\\x11', bytes([item]) + b'\\x00')\n//def send_message(self, type, payload):\n//        length = 5 + len(payload)\n//        checksum = self.compute_checksum(bytes([length]), type + payload)\n//        prefix = b'\\x7e'\n//        message = prefix + bytes([length]) + type + payload + \\\n//            bytes([checksum]) + prefix\n// print(message)\n//        self.s.send(message)\n\n//b'~\\x07\\n\\xbf\\x11\\x11\\x00\\x93~'",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 510,
+        "y": 900,
+        "wires": [
+            [
+                "b864a7e6.19d478"
+            ]
+        ]
+    },
+    {
+        "id": "84f386f9.70f7a8",
+        "type": "function",
+        "z": "ea308a0a.455a88",
+        "name": "set temp 0a bf 20",
+        "func": "var newtemp = msg.payload\n\nvar buf = Buffer.alloc(9,\"hex\");\n\nvar message = 0x0a;\nvar foo = buf.fill(message,2,3);\nmessage = 0xbf;\nfoo = buf.fill(message,3,4);\nmessage = 0x20;\nfoo = buf.fill(message,4,5);\nmessage = newtemp;\nfoo = buf.fill(message,5,6);\nmessage = 0x00;\nfoo = buf.fill(message,6,7);\n\nvar len = foo.lenght+5;\n\nvar hexLen = Number(len).toString(16);\n\nvar foo2 = foo.fill(\"~\",0,1);\nvar foo3 = foo2.fill(0x07,1,2);\n\n\n\npolycrc = global.get('polycrc');\nlet crc8 = polycrc.crc(8, 0x07, 0x02, 0x02, false);\nmakecrc = foo.slice(1, 7);\n//bar = foo.slice(1, 7);\nbar = crc8(makecrc);\n//var bar = crc.crc8(foo).toString(16);\nvar foo4 = foo3.fill(bar,7,8);\nvar foo5 = foo4.fill(\"~\",8);\n\np = {foo5};\nvar newMsg = { payload: p };\nreturn newMsg;\n\n//START LEN 0a bf 11    0x50 00    CRC END\n//self.send_message(b'\\x0a\\xbf\\x11', bytes([item]) + b'\\x00')\n//def send_message(self, type, payload):\n//        length = 5 + len(payload)\n//        checksum = self.compute_checksum(bytes([length]), type + payload)\n//        prefix = b'\\x7e'\n//        message = prefix + bytes([length]) + type + payload + \\\n//            bytes([checksum]) + prefix\n// print(message)\n//        self.s.send(message)\n\n//b'~\\x07\\n\\xbf\\x11\\x11\\x00\\x93~'",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 650,
+        "y": 960,
+        "wires": [
+            [
+                "b864a7e6.19d478",
+                "d8ecb1a.807145"
+            ]
+        ]
+    },
+    {
+        "id": "d42414e.31c9fe8",
+        "type": "function",
+        "z": "ea308a0a.455a88",
+        "name": "0x51 - heating mode",
+        "func": "var buf = Buffer.alloc(9,\"hex\");\n\nvar message = 0x0a;\nvar foo = buf.fill(message,2,3);\nmessage = 0xbf;\nfoo = buf.fill(message,3,4);\nmessage = 0x11;\nfoo = buf.fill(message,4,5);\nmessage = 0x51;\nfoo = buf.fill(message,5,6);\nmessage = 0x00;\nfoo = buf.fill(message,6,7);\n\nvar len = foo.lenght+5;\n\nvar hexLen = Number(len).toString(16);\n\nvar foo2 = foo.fill(\"~\",0,1);\nvar foo3 = foo2.fill(0x07,1,2);\n\n\n\npolycrc = global.get('polycrc');\nlet crc8 = polycrc.crc(8, 0x07, 0x02, 0x02, false);\nmakecrc = foo.slice(1, 7);\n//bar = foo.slice(1, 7);\nbar = crc8(makecrc);\n//var bar = crc.crc8(foo).toString(16);\nvar foo4 = foo3.fill(bar,7,8);\nvar foo5 = foo4.fill(\"~\",8);\n\np = {foo5};\nvar newMsg = { payload: p };\nreturn newMsg;\n\n//START LEN 0a bf 11    0x50 00    CRC END\n//self.send_message(b'\\x0a\\xbf\\x11', bytes([item]) + b'\\x00')\n//def send_message(self, type, payload):\n//        length = 5 + len(payload)\n//        checksum = self.compute_checksum(bytes([length]), type + payload)\n//        prefix = b'\\x7e'\n//        message = prefix + bytes([length]) + type + payload + \\\n//            bytes([checksum]) + prefix\n// print(message)\n//        self.s.send(message)\n\n//b'~\\x07\\n\\xbf\\x11\\x11\\x00\\x93~'",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 540,
+        "y": 1060,
+        "wires": [
+            [
+                "b864a7e6.19d478"
+            ]
+        ]
+    },
+    {
+        "id": "9eb86347.0469f8",
+        "type": "function",
+        "z": "ea308a0a.455a88",
+        "name": "0x50 - temperature range",
+        "func": "var buf = Buffer.alloc(9,\"hex\");\n\nvar message = 0x0a;\nvar foo = buf.fill(message,2,3);\nmessage = 0xbf;\nfoo = buf.fill(message,3,4);\nmessage = 0x11;\nfoo = buf.fill(message,4,5);\nmessage = 0x50;\nfoo = buf.fill(message,5,6);\nmessage = 0x00;\nfoo = buf.fill(message,6,7);\n\nvar len = foo.lenght+5;\n\nvar hexLen = Number(len).toString(16);\n\nvar foo2 = foo.fill(\"~\",0,1);\nvar foo3 = foo2.fill(0x07,1,2);\n\n\n\npolycrc = global.get('polycrc');\nlet crc8 = polycrc.crc(8, 0x07, 0x02, 0x02, false);\nmakecrc = foo.slice(1, 7);\n//bar = foo.slice(1, 7);\nbar = crc8(makecrc);\n//var bar = crc.crc8(foo).toString(16);\nvar foo4 = foo3.fill(bar,7,8);\nvar foo5 = foo4.fill(\"~\",8);\n\np = {foo5};\nvar newMsg = { payload: p };\nreturn newMsg;\n\n//START LEN 0a bf 11    0x50 00    CRC END\n//self.send_message(b'\\x0a\\xbf\\x11', bytes([item]) + b'\\x00')\n//def send_message(self, type, payload):\n//        length = 5 + len(payload)\n//        checksum = self.compute_checksum(bytes([length]), type + payload)\n//        prefix = b'\\x7e'\n//        message = prefix + bytes([length]) + type + payload + \\\n//            bytes([checksum]) + prefix\n// print(message)\n//        self.s.send(message)\n\n//b'~\\x07\\n\\xbf\\x11\\x11\\x00\\x93~'",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 550,
+        "y": 1020,
+        "wires": [
+            [
+                "b864a7e6.19d478"
+            ]
+        ]
+    },
+    {
+        "id": "8496c30.77191c",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "circpump",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/circpump",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.circpump",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 820,
+        "y": 280,
+        "wires": [
+            [
+                "1d1bdb70.305dbd"
+            ]
+        ]
+    },
+    {
+        "id": "d06c21b1.43bf9",
+        "type": "unit-converter",
+        "z": "ea308a0a.455a88",
+        "category": "temperature",
+        "inputUnit": "C",
+        "outputUnit": "F",
+        "inputField": "payload",
+        "outputField": "payload",
+        "inputFieldType": "msg",
+        "outputFieldType": "msg",
+        "name": "C/F",
+        "x": 370,
+        "y": 960,
+        "wires": [
+            [
+                "fb98a3b0.600a9"
+            ]
+        ]
+    },
+    {
+        "id": "fb98a3b0.600a9",
+        "type": "calculator",
+        "z": "ea308a0a.455a88",
+        "name": "rnd",
+        "inputMsgField": "payload",
+        "outputMsgField": "payload",
+        "operation": "round",
+        "constant": "",
+        "x": 490,
+        "y": 960,
+        "wires": [
+            [
+                "84f386f9.70f7a8"
+            ]
+        ]
+    },
+    {
+        "id": "1a5a40ec.33b427",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "temp-hk",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/temp-hk",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.temp",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 820,
+        "y": 120,
+        "wires": [
+            [
+                "b5a4235a.183248"
+            ]
+        ]
+    },
+    {
+        "id": "b5a4235a.183248",
+        "type": "unit-converter",
+        "z": "ea308a0a.455a88",
+        "category": "temperature",
+        "inputUnit": "F",
+        "outputUnit": "C",
+        "inputField": "payload",
+        "outputField": "payload",
+        "inputFieldType": "msg",
+        "outputFieldType": "msg",
+        "name": "F>C",
+        "x": 970,
+        "y": 120,
+        "wires": [
+            [
+                "1d1bdb70.305dbd"
+            ]
+        ]
+    },
+    {
+        "id": "fb9d8ada.aa78b8",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "readyrest",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.readyrest",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/readyrest",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 820,
+        "y": 240,
+        "wires": [
+            [
+                "1d1bdb70.305dbd"
+            ]
+        ]
+    },
+    {
+        "id": "83fb4197.5b60a",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "heating",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.heating",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/heating",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 820,
+        "y": 200,
+        "wires": [
+            [
+                "1d1bdb70.305dbd"
+            ]
+        ]
+    },
+    {
+        "id": "a3470219.04dba",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "temprange",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.temprange",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/temprange",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 830,
+        "y": 160,
+        "wires": [
+            [
+                "1d1bdb70.305dbd"
+            ]
+        ]
+    },
+    {
+        "id": "7c049942.5d8268",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "tempset hk",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/tempsetting-hk",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.tempsetting",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 830,
+        "y": 600,
+        "wires": [
+            [
+                "2334bd21.38359a"
+            ]
+        ]
+    },
+    {
+        "id": "2334bd21.38359a",
+        "type": "unit-converter",
+        "z": "ea308a0a.455a88",
+        "category": "temperature",
+        "inputUnit": "F",
+        "outputUnit": "C",
+        "inputField": "payload",
+        "outputField": "payload",
+        "inputFieldType": "msg",
+        "outputFieldType": "msg",
+        "name": "F>C",
+        "x": 970,
+        "y": 600,
+        "wires": [
+            [
+                "1d1bdb70.305dbd"
+            ]
+        ]
+    },
+    {
+        "id": "3b1dc705.80dcd8",
+        "type": "comment",
+        "z": "ea308a0a.455a88",
+        "name": "Get Status",
+        "info": "",
+        "x": 420,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "edaade79.f48ad8",
+        "type": "comment",
+        "z": "ea308a0a.455a88",
+        "name": "Set Status",
+        "info": "removed ability to set temp from homekit for simplicity...",
+        "x": 440,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "fd3e26c1.53b828",
+        "type": "persist in",
+        "z": "ea308a0a.455a88",
+        "name": "Hot Tub Persist Out",
+        "storageNode": "5b6cb431.493cfc",
+        "x": 430,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "dd6e0a67.b2f248",
+        "type": "persist out",
+        "z": "ea308a0a.455a88",
+        "name": "In",
+        "storageNode": "5b6cb431.493cfc",
+        "x": 430,
+        "y": 240,
+        "wires": [
+            [
+                "f2984bef.52adc8"
+            ]
+        ]
+    },
+    {
+        "id": "bea16a5e.7b7c68",
+        "type": "delay",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "x": 390,
+        "y": 80,
+        "wires": [
+            [
+                "78e547f0.990df8"
+            ]
+        ]
+    },
+    {
+        "id": "26c3fe.ecd62c02",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "ROOT/hottub/lights/set",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/lights/set",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "0",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 500,
+        "y": 1260,
+        "wires": [
+            [
+                "537c93d0.55e6e4"
+            ]
+        ]
+    },
+    {
+        "id": "5912bd38.9184ec",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "ROOT/hottub/pump1/set",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/pump1/set",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "0",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 510,
+        "y": 1300,
+        "wires": [
+            [
+                "537c93d0.55e6e4"
+            ]
+        ]
+    },
+    {
+        "id": "f7b80d0f.cb45",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "ROOT/hottub/pump2/set",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/pump2/set",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "0",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 510,
+        "y": 1340,
+        "wires": [
+            [
+                "537c93d0.55e6e4"
+            ]
+        ]
+    },
+    {
+        "id": "4272f106.eac6a",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "ROOT/hottub/pump3/set",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/pump3/set",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "0",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 510,
+        "y": 1380,
+        "wires": [
+            [
+                "537c93d0.55e6e4"
+            ]
+        ]
+    },
+    {
+        "id": "c2e176ba.0d5238",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "ROOT/hottub/pump4/set",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/pump4/set",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "0",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 510,
+        "y": 1420,
+        "wires": [
+            [
+                "537c93d0.55e6e4"
+            ]
+        ]
+    },
+    {
+        "id": "37bbecda.fdbb04",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "ROOT/hottub/temprange/set",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/heating/set",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "ROOT/hottub/temprange/set",
+                "pt": "msg",
+                "to": "low",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 520,
+        "y": 1460,
+        "wires": [
+            [
+                "537c93d0.55e6e4"
+            ]
+        ]
+    },
+    {
+        "id": "d4e7d1c2.a0c36",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "ROOT/hottub/heating/set",
+        "rules": [
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/heating/set",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "0",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 510,
+        "y": 1220,
+        "wires": [
+            [
+                "537c93d0.55e6e4"
+            ]
+        ]
+    },
+    {
+        "id": "537c93d0.55e6e4",
+        "type": "mqtt out",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "topic": "",
+        "qos": "0",
+        "retain": "",
+        "broker": "8ed58af6.2de57",
+        "x": 750,
+        "y": 1340,
+        "wires": []
+    },
+    {
+        "id": "b4085a49.ee00a",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "hottub.timestamp",
+                "pt": "global",
+                "to": "",
+                "tot": "date"
+            },
+            {
+                "t": "set",
+                "p": "topic",
+                "pt": "msg",
+                "to": "ROOT/hottub/lockout",
+                "tot": "str"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "payload.lockout",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 840,
+        "y": 680,
+        "wires": [
+            [
+                "1d1bdb70.305dbd"
+            ]
+        ]
+    },
+    {
+        "id": "fccddb0b.ff8898",
+        "type": "switch",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "hottub.p1",
+                "vt": "global"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 370,
+        "y": 780,
+        "wires": [
+            [],
+            [
+                "43f368e4.ac3ef8"
+            ]
+        ],
+        "outputLabels": [
+            "=status",
+            "!=status"
+        ]
+    },
+    {
+        "id": "7beac7de.93aef",
+        "type": "switch",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "hottub.lightmode",
+                "vt": "global"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 370,
+        "y": 740,
+        "wires": [
+            [],
+            [
+                "8ec0a9ff.a9dd18"
+            ]
+        ],
+        "outputLabels": [
+            "=status",
+            "!=status"
+        ]
+    },
+    {
+        "id": "9c7115a6.91c1b8",
+        "type": "switch",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "hottub.p2",
+                "vt": "global"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 370,
+        "y": 820,
+        "wires": [
+            [],
+            [
+                "212824c0.d3213c"
+            ]
+        ],
+        "outputLabels": [
+            "=status",
+            "!=status"
+        ]
+    },
+    {
+        "id": "1117eec6.ac8669",
+        "type": "switch",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "hottub.p3",
+                "vt": "global"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 370,
+        "y": 860,
+        "wires": [
+            [],
+            [
+                "74068a7f.17aafc"
+            ]
+        ],
+        "outputLabels": [
+            "=status",
+            "!=status"
+        ]
+    },
+    {
+        "id": "6bad1717.b50978",
+        "type": "switch",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "hottub.p4",
+                "vt": "global"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 370,
+        "y": 900,
+        "wires": [
+            [],
+            [
+                "1f56c1fd.fd2ece"
+            ]
+        ],
+        "outputLabels": [
+            "=status",
+            "!=status"
+        ]
+    },
+    {
+        "id": "55366055.f2df18",
+        "type": "switch",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "hottub.temprange",
+                "vt": "global"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 370,
+        "y": 1020,
+        "wires": [
+            [],
+            [
+                "9eb86347.0469f8"
+            ]
+        ],
+        "outputLabels": [
+            "=status",
+            "!=status"
+        ]
+    },
+    {
+        "id": "a4f7e680.590d78",
+        "type": "switch",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "hottub.readyrest",
+                "vt": "global"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 370,
+        "y": 1060,
+        "wires": [
+            [],
+            [
+                "d42414e.31c9fe8"
+            ]
+        ],
+        "outputLabels": [
+            "=status",
+            "!=status"
+        ]
+    },
+    {
+        "id": "7ac69d7f.9313a4",
+        "type": "inject",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "5",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "x": 130,
+        "y": 1340,
+        "wires": [
+            [
+                "908929f0.0e2be8"
+            ]
+        ]
+    },
+    {
+        "id": "b076168c.72a9b8",
+        "type": "comment",
+        "z": "ea308a0a.455a88",
+        "name": "Safety",
+        "info": "",
+        "x": 210,
+        "y": 1220,
+        "wires": []
+    },
+    {
+        "id": "908929f0.0e2be8",
+        "type": "switch",
+        "z": "ea308a0a.455a88",
+        "name": "lockout",
+        "property": "hottub.lockout",
+        "propertyType": "global",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "0",
+                "vt": "num"
+            },
+            {
+                "t": "eq",
+                "v": "1",
+                "vt": "num"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 3,
+        "x": 280,
+        "y": 1340,
+        "wires": [
+            [],
+            [
+                "37bbecda.fdbb04",
+                "c2e176ba.0d5238",
+                "4272f106.eac6a",
+                "f7b80d0f.cb45",
+                "5912bd38.9184ec",
+                "26c3fe.ecd62c02",
+                "d4e7d1c2.a0c36"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "d38d5094.9298f",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "lockout",
+        "rules": [
+            {
+                "t": "set",
+                "p": "hottub.lockout",
+                "pt": "global",
+                "to": "$parseInteger(payload, \"1\")",
+                "tot": "jsonata"
+            },
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "$parseInteger(payload, \"1\")",
+                "tot": "jsonata"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 380,
+        "y": 1100,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "267d5ae2.e987a6",
+        "type": "debug",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 580,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "ec41e29c.df855",
+        "type": "function",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "func": "\nhottubTEMP = {\n    measurement: 'hottub-temp',\n    fields: {\n        value: parseFloat(msg.payload.temp)\n    },\n    tags: {\n        deviceName: 'hottub',\n        unit: 'F'\n    }\n}\n\nhottubSET = {\n    measurement: 'hottub-target',\n    fields: {\n        value: parseFloat(msg.payload.tempsetting)\n    },\n    tags: {\n        deviceName: 'hottub',\n        unit: 'F'\n    }\n}\n\n\n\n\n\n\nmsg.payload = [ hottubTEMP, hottubSET ];\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 930,
+        "y": 800,
+        "wires": [
+            [
+                "ae06bf2d.4a8fa"
+            ]
+        ]
+    },
+    {
+        "id": "ae06bf2d.4a8fa",
+        "type": "influxdb batch",
+        "z": "ea308a0a.455a88",
+        "influxdb": "e6c4fbe7.d50048",
+        "precision": "",
+        "retentionPolicy": "",
+        "name": "",
+        "x": 1130,
+        "y": 1260,
+        "wires": []
+    },
+    {
+        "id": "61c64cb3.b506fc",
+        "type": "darksky",
+        "z": "ea308a0a.455a88",
+        "darksky": "",
+        "name": "",
+        "lon": "",
+        "lat": "",
+        "date": "",
+        "time": "",
+        "mode": "message",
+        "lang": "en",
+        "units": "us",
+        "x": 300,
+        "y": 1600,
+        "wires": [
+            [
+                "2b4103d7.838a94",
+                "8df2904e.80b5d8"
+            ]
+        ]
+    },
+    {
+        "id": "65fdf1d3.31ffb8",
+        "type": "inject",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "repeat": "300",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "x": 150,
+        "y": 1600,
+        "wires": [
+            [
+                "61c64cb3.b506fc"
+            ]
+        ]
+    },
+    {
+        "id": "2b4103d7.838a94",
+        "type": "function",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "func": "\ncurrentwx = {\n    measurement: 'current-wx',\n    fields: {\n        temp: parseFloat(msg.data.currently.temperature),\n        cloud: parseFloat(msg.data.currently.cloudCover),\n        dewpoint: parseFloat(msg.data.currently.dewPoint),\n        windspeed: parseFloat(msg.data.currently.windSpeed),\n        humidity: parseFloat(msg.data.currently.humidity)\n\n    },\n    tags: {\n        latitude: msg.data.latitude,\n        longitude: msg.data.longitude\n    }\n}\n\n\nmsg.payload = [ currentwx ];\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "x": 430,
+        "y": 1600,
+        "wires": [
+            [
+                "3e25b2a7.8f77fe"
+            ]
+        ]
+    },
+    {
+        "id": "8df2904e.80b5d8",
+        "type": "debug",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 930,
+        "y": 1640,
+        "wires": []
+    },
+    {
+        "id": "b7a378.0cf9ec88",
+        "type": "influxdb batch",
+        "z": "ea308a0a.455a88",
+        "influxdb": "86ceca20.3a23d8",
+        "precision": "",
+        "retentionPolicy": "",
+        "name": "",
+        "x": 1120,
+        "y": 1300,
+        "wires": []
+    },
+    {
+        "id": "3e25b2a7.8f77fe",
+        "type": "change",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "rules": [
+            {
+                "t": "delete",
+                "p": "location",
+                "pt": "msg"
+            },
+            {
+                "t": "delete",
+                "p": "data",
+                "pt": "msg"
+            },
+            {
+                "t": "delete",
+                "p": "title",
+                "pt": "msg"
+            },
+            {
+                "t": "delete",
+                "p": "description",
+                "pt": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 580,
+        "y": 1600,
+        "wires": [
+            [
+                "8df2904e.80b5d8",
+                "8725990b.23c5d8",
+                "ae06bf2d.4a8fa"
+            ]
+        ]
+    },
+    {
+        "id": "8725990b.23c5d8",
+        "type": "delay",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "pauseType": "delay",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "x": 740,
+        "y": 1660,
+        "wires": [
+            [
+                "b7a378.0cf9ec88",
+                "446aaf32.af3698"
+            ]
+        ]
+    },
+    {
+        "id": "c536e836.d1a21",
+        "type": "delay",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "5",
+        "rateUnits": "minute",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": true,
+        "x": 820,
+        "y": 740,
+        "wires": [
+            [
+                "ec41e29c.df855"
+            ]
+        ]
+    },
+    {
+        "id": "a3847512.d23d1",
+        "type": "catch",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "scope": null,
+        "uncaught": false,
+        "x": 940,
+        "y": 1720,
+        "wires": [
+            [
+                "8df2904e.80b5d8"
+            ]
+        ]
+    },
+    {
+        "id": "2dbe973b.e2913",
+        "type": "influxdb batch",
+        "z": "ea308a0a.455a88",
+        "influxdb": "d43673f.b818f9",
+        "precision": "",
+        "retentionPolicy": "",
+        "name": "",
+        "x": 1090,
+        "y": 1340,
+        "wires": []
+    },
+    {
+        "id": "446aaf32.af3698",
+        "type": "delay",
+        "z": "ea308a0a.455a88",
+        "name": "",
+        "pauseType": "delay",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "x": 1060,
+        "y": 1460,
+        "wires": [
+            [
+                "2dbe973b.e2913"
+            ]
+        ]
+    },
+    {
+        "id": "8ed58af6.2de57",
+        "type": "mqtt-broker",
+        "z": "",
+        "name": "ROOT-Hub.ROOT.lan",
+        "broker": "ROOT-Hub.ROOT.lan",
+        "port": "1883",
+        "clientid": "",
+        "usetls": false,
+        "compatmode": false,
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "ROOT/systems/hub",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "connecting!",
+        "closeTopic": "ROOT/systems/hub",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "disconnecting!",
+        "willTopic": "ROOT/systems/hub",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "DEADDEADDEAD!"
+    },
+    {
+        "id": "5b6cb431.493cfc",
+        "type": "persist-store",
+        "z": "",
+        "filename": "hot-tub-persistance.json",
+        "interval": "60"
+    },
+    {
+        "id": "e6c4fbe7.d50048",
+        "type": "influxdb",
+        "z": "",
+        "hostname": "127.0.0.1",
+        "port": "8086",
+        "protocol": "http",
+        "database": "Hubitat",
+        "name": "",
+        "usetls": false,
+        "tls": "94fcbbe7.30851"
+    },
+    {
+        "id": "86ceca20.3a23d8",
+        "type": "influxdb",
+        "z": "",
+        "hostname": "127.0.0.1",
+        "port": "8086",
+        "protocol": "http",
+        "database": "Solar",
+        "name": "",
+        "usetls": false,
+        "tls": ""
+    },
+    {
+        "id": "d43673f.b818f9",
+        "type": "influxdb",
+        "z": "",
+        "hostname": "localhost",
+        "port": "8086",
+        "protocol": "http",
+        "database": "aquaDRAMA",
+        "name": "aquaDRAMA",
+        "usetls": false,
+        "tls": ""
+    },
+    {
+        "id": "94fcbbe7.30851",
+        "type": "tls-config",
+        "z": "",
+        "name": "local-tls",
+        "cert": "",
+        "key": "",
+        "ca": "",
+        "certname": "",
+        "keyname": "",
+        "caname": "",
+        "verifyservercert": false
+    }
+]
